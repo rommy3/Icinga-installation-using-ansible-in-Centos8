@@ -2,6 +2,9 @@
 
 #install Ansible in Local machine
 
+#Before running the playbook, Change the Hostname in Inventory file and yaml file (host: Hostname). (in my case Hostname is "server")
+
+
 #Open Browser and use the url http://localhost/icingaweb2/setup
 
 .............................................................
