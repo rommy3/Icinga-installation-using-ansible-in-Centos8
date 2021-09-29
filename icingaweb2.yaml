@@ -1,0 +1,98 @@
+---
+- name: icingaweb2 installation..
+  hosts: server 
+  become: yes
+  become_user: root
+  tasks:
+   - name: installing PHP:remi-8.0...
+     shell:
+      dnf install https://rpms.remirepo.net/enterprise/remi-release-8.rpm -y
+   - name: enabling module PHP:remi-8.0...  
+     shell: |
+      dnf module reset php -y
+      dnf module enable php:remi-8.0 -y
+
+   - name: installing php-8 & imagemagick
+     dnf:
+      name: ['php', 'php-cli', 'php-common', 'gcc', 'php-devel', 'php-pear', 'make'] 
+      state: present 
+
+   - name: installing ImageMagick..
+     dnf:
+      name: ['ImageMagick', 'ImageMagick-devel', 'ImageMagick-perl']
+      state: present
+
+   - name: installing dependencies for php8  
+     command:
+      cmd: pecl install imagick
+      stdin: ' '
+     ignore_errors: yes
+
+   - name: adding .so extension on imagick.ini 
+     shell: |
+      echo "extension=imagick.so" > /etc/php.d/20-imagick.ini
+
+   - name: installing httpd,icingaweb2 & icingacli..
+     dnf:
+      name: ['icingaweb2', 'icingacli', 'httpd', 'icingaweb2-selinux']    
+      state: present  
+   
+   - name: enabling httpd & php-fpm
+     systemd:
+      name: '{{ item }}' 
+      state: started
+      enabled: yes
+     with_items:
+       - httpd
+       - php-fpm
+   
+   - name: opening httpd port on firewall..
+     firewalld:
+      service: http
+      permanent: yes
+      immediate: yes
+      state: enabled     
+
+   - name: Configure Icinga 2 REST ApiUser
+     shell: |
+      icinga2 api setup
+      echo 'object ApiUser "root" { 
+      password = "root@321"  
+      permissions = [ "*" ]
+      }' > /etc/icinga2/conf.d/api-users.conf
+
+   - name: Enabling icingaweb modules..
+     command: |
+      icingacli module enable {{ item }}
+     with_items:
+      - setup
+      - doc
+      - migrate
+      - monitoring
+
+   - name: Correcting the permissions...
+      
+   - name: Restarting services
+     systemd:
+      name: '{{ item }}'
+      state: started
+      enabled: yes
+     with_items:
+      - httpd
+      - php-fpm
+      - icinga2
+
+   - name: Generating token for icingaweb2
+     block:
+      - name: checking for existing token..
+        shell: |
+         icingacli setup token show
+        register: command_show
+      - debug:
+          var: command_show.stdout_lines
+     rescue:
+      - name:  creating token
+        shell: icingacli setup token create
+        register: command_output
+      - debug:
+         var: command_output.stdout_lines

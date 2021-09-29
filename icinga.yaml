@@ -1,0 +1,112 @@
+---
+  - name: icinga installation
+    hosts: server 
+    become: yes
+    become_user: root
+    tasks:
+      - name: installing epel-repo 
+        yum:
+          name: epel-release
+          state: latest
+
+      - name: enabling icinga repo      
+        shell: |
+          rpm --import https://packages.icinga.com/icinga.key
+          dnf install -y https://packages.icinga.com/epel/icinga-rpm-release-8-latest.noarch.rpm
+ 
+      - name: enable CentOS PowerTools repository for epel
+        yum:
+          enablerepo: "powertools"
+
+      - name: Installing icinga2 & Mariadb packages 
+        yum:
+          name: ['icinga2', 'icinga2-selinux', 'mariadb', 'mariadb-server', 'icinga2-ido-mysql', 'python3-mysql']
+          state: latest 
+      
+      - name: Installing Nagios Plugins
+        shell: |
+          dnf install nagios-plugins-all -y --skip-broken --nobest 
+
+      - name: Ansible service with_items example
+        service:
+          name: "{{ item }}"
+          state: restarted
+          enabled: yes
+        with_items:
+            - 'mariadb'
+            - 'icinga2'
+
+      - name: Enabling firewall port=5665 permanently.
+        firewalld:
+          permanent: yes
+          immediate: yes
+          port: "5665/tcp"
+          state: enabled
+     
+      - name: Setup mysql_secure_login
+        mysql_user:
+          name: root
+          host: localhost
+          password: 'root@321'
+          login_user: root  
+          login_password: 'root@321'
+          check_implicit_admin: yes 
+          priv: "*.*:ALL,GRANT"
+
+      - name: creating icinga2 user in mysql
+        mysql_user:
+          name: icinga2
+          host: localhost
+          password: 'icinga'
+          login_user: root
+          login_password: 'root@321'
+          priv: "icinga2.*:ALL,GRANT"
+
+      - name: creating icinga2 user in mysql
+        mysql_user:
+          name: icingaweb2
+          host: localhost
+          password: 'icinga'
+          login_user: root
+          login_password: 'root@321'
+          priv: "icingaweb2.*:ALL,GRANT"
+
+
+      - name: Creating Databases icinga2 and icingaweb2
+        mysql_db:
+          name: ['icinga2', 'icingaweb2'] 
+          state: present 
+          login_user: root
+          login_password: 'root@321'
+
+      - name: Importing icinga2 sql data..
+        mysql_db:
+          login_user: root
+          login_password: 'root@321'
+          name: icinga2
+          state: import 
+          target: /usr/share/icinga2-ido-mysql/schema/mysql.sql
+
+      - name: Enabling icinga2 features..
+        shell: "{{ item }}"
+        with_items: 
+         - icinga2 feature enable command  
+         - icinga2 feature enable ido-mysql
+           
+      - name: Replacing DB-creds in ido-mysql.conf
+        lineinfile:
+         path: /etc/icinga2/features-enabled/ido-mysql.conf
+         regexp: "^}"
+         insertafter: '#' 
+         line: |
+            user = "icinga2"
+            password = "icinga"
+            host = "localhost"
+            database = "icinga2"
+            }
+         create: yes
+
+      - name: Restarting icinga2.services
+        service:
+          name: icinga2
+          state: restarted             
