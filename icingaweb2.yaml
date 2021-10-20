@@ -71,6 +71,8 @@
       - monitoring
 
    - name: Correcting the permissions...
+     shell: |
+     chown -R apache /etc/icingaweb2/
       
    - name: Restarting services
      systemd:
