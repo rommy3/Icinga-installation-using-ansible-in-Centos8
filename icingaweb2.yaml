@@ -19,7 +19,7 @@
 
    - name: installing ImageMagick..
      dnf:
-      name: ['ImageMagick', 'ImageMagick-devel', 'ImageMagick-perl']
+      name: ['ImageMagick', 'ImageMagick-devel', 'ImageMagick-perl', 'php-pecl-imagick']
       state: present
 
    - name: installing dependencies for php8  
