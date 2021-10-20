@@ -72,7 +72,8 @@
 
    - name: Correcting the permissions...
      shell: |
-     chown -R apache /etc/icingaweb2/
+      usermod -a -G icingaweb2 apache
+      chown -R apache /etc/icingaweb2/
       
    - name: Restarting services
      systemd:
