@@ -12,7 +12,7 @@
       dnf module reset php -y
       dnf module enable php:remi-8.0 -y
 
-   - name: installing php-8 & imagemagick
+   - name: installing php-8 
      dnf:
       name: ['php', 'php-cli', 'php-common', 'gcc', 'php-devel', 'php-pear', 'make'] 
       state: present 
@@ -21,16 +21,6 @@
      dnf:
       name: ['ImageMagick', 'ImageMagick-devel', 'ImageMagick-perl', 'php-pecl-imagick']
       state: present
-
-   - name: installing dependencies for php8  
-     command:
-      cmd: pecl install imagick
-      stdin: ' '
-     ignore_errors: yes
-
-   - name: adding .so extension on imagick.ini 
-     shell: |
-      echo "extension=imagick.so" > /etc/php.d/20-imagick.ini
 
    - name: installing httpd,icingaweb2 & icingacli..
      dnf:
